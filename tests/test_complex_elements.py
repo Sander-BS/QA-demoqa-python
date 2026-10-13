@@ -9,8 +9,7 @@ def test_web_table_update_salary(page: Page):
     expect(status_cell).to_have_text('12000')
 
     user_row.locator('[title="Edit"]').click()
-    page.locator('#salary').clear()
-    page.locator('#salary').type('25000')
+    page.locator('#salary').fill('25000')
     page.get_by_role('button', name='submit').click()
 
     status_cell = user_row.locator('td').nth(4)
@@ -19,17 +18,13 @@ def test_web_table_update_salary(page: Page):
 
 def test_custom_checkbox_selection(page: Page):
     page.goto('/checkbox')
-    page.locator('div[role="treeitem"]').filter(has_text='Home').locator(
-        '.rc-tree-switcher'
+    page.get_by_label('Home').locator("..").locator(".rc-tree-switcher").click()
+    page.get_by_label('Downloads').locator("..").locator(".rc-tree-switcher").click()
+    page.get_by_label('Word File.doc').locator("..").locator(
+        ".rc-tree-checkbox"
     ).click()
-    page.locator('div[role="treeitem"]').filter(has_text='Downloads').locator(
-        '.rc-tree-switcher'
-    ).click()
-    page.locator('div[role="treeitem"]').filter(has_text='Word File.doc').locator(
-        '.rc-tree-checkbox'
-    ).click()
-    page.locator('div[role="treeitem"]').filter(has_text='Excel File.doc').locator(
-        '.rc-tree-checkbox'
+    page.get_by_label('Excel File.doc').locator("..").locator(
+        ".rc-tree-checkbox"
     ).click()
 
     expected_items = ["excelFile", "wordFile", "downloads"]
@@ -46,22 +41,13 @@ def test_react_select_and_slider(page: Page):
 
     expect(page.locator("#withOptGroup")).to_contain_text("Group 2, option 1")
 
+
+def test_slider(page: Page):
     page.goto('/slider')
 
     slider = page.locator('#slider')
-
-    box = slider.bounding_box()
-
-    target_x = box['x'] + (box['width'] * 0.84)
-    center_y = box['y'] + (box['height'] / 2)
-
-    start_x = box['x'] + (box['width'] * 0.25)
-
-    page.mouse.move(start_x, center_y)
-    page.mouse.down()
-    page.mouse.move(target_x, center_y)
-    page.mouse.up()
-
-    expect(slider).to_have_value('85')
+    slider.focus()
+    for _ in range(60):
+        slider.press("ArrowRight")
 
     expect(page.locator('#sliderValue')).to_have_value('85')
