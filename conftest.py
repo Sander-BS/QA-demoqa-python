@@ -15,8 +15,8 @@ def browser_context_args(browser_context_args):
 
 
 @pytest.fixture(scope="session")
-def account_api():
-    return AccountAPI('https://demoqa.com')
+def account_api(base_url: str):
+    return AccountAPI(base_url)
 
 
 @pytest.fixture(scope='function')
@@ -25,11 +25,11 @@ def api_user(account_api: AccountAPI):
     password = 'Password123!'
 
     create_res = account_api.create_user(username, password)
-    assert create_res.status_code == 201
+    assert create_res.status_code == 201, f"Failed to create user: {create_res.text}"
     user_id = create_res.json()['userID']
 
     token_res = account_api.generate_token(username, password)
-    assert token_res.status_code == 200
+    assert token_res.status_code == 200, f"Failed to generate token: {token_res.text}"
     token = token_res.json()['token']
 
     user_data = {
