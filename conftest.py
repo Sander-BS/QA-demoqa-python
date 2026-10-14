@@ -1,13 +1,14 @@
 import pytest
 import uuid
-
-from playwright.sync_api import Page
-
+import allure
+import os
+from playwright.sync_api import Page, BrowserContext
 from api.account_api import AccountAPI
 from pages.login_page import LoginPage
 from pages.profile_page import ProfilePage
 from api.bookstore_api import BookStoreAPI
 from pages.bookstore_page import BookStorePage
+from utils.telegram_notifier import send_telegram_notification
 
 
 @pytest.fixture(scope="session")
@@ -91,3 +92,60 @@ def user_with_book(api_user: dict, bookstore_api: BookStoreAPI) -> dict:
     yield user_data
 
     bookstore_api.delete_all_books(api_user['user_id'], api_user['token'])
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f'rep_{rep.when}', rep)
+
+
+@pytest.fixture(scope='function', autouse=True)
+def attach_artifacts_on_failure(request, page: Page, context: BrowserContext):
+    context.tracing.start(screenshots=True, snapshots=True, sources=True)
+
+    yield
+
+    failed = (
+        request.node.rep_call.failed if hasattr(request.node, 'rep_call') else False
+    )
+
+    if failed:
+        screenshot = page.screenshot(full_page=True)
+        allure.attach(
+            screenshot,
+            name=f'failed_screenshot_{request.node.name}',
+            attachment_type=allure.attachment_type.PNG,
+        )
+
+        trace_path = f'allure-results/trace_{request.node.name}.zip'
+        context.tracing.stop(path=trace_path)
+        allure.attach.file(
+            trace_path,
+            name=f'playwright_trace_{request.node.name}',
+            attachment_type='application/zip',
+            extension='.zip',
+        )
+    else:
+        context.tracing.stop()
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_sessionfinish(session, exitstatus):
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    chat_id = os.getenv('TELEGRAM_CHAT_ID')
+
+    if token and chat_id:
+        passed = session.testscollected - session.testfailed
+        failed = session.testsfailed
+
+        status_icon = "✅" if failed == 0 else "❌"
+        message = (
+            f"<b>{status_icon} Результаты прогона автотестов DemoQA</b>\n\n"
+            f"<b>Всего тестов:</b> {session.testscollected}\n"
+            f"<b>Успешно:</b> {passed}\n"
+            f"<b>Упало:</b> {failed}\n"
+        )
+
+        send_telegram_notification(token=token, chat_id=chat_id, message=message)
