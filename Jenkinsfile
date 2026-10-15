@@ -7,12 +7,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/your-username/QA-demoqa-python.git'
-            }
-        }
-
         stage('Setup Dependencies') {
             steps {
                 bat '''
