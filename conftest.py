@@ -1,7 +1,8 @@
+import os
+import allure
 import pytest
 import uuid
-import allure
-import os
+from dotenv import load_dotenv
 from playwright.sync_api import Page, BrowserContext
 from api.account_api import AccountAPI
 from pages.login_page import LoginPage
@@ -9,6 +10,8 @@ from pages.profile_page import ProfilePage
 from api.bookstore_api import BookStoreAPI
 from pages.bookstore_page import BookStorePage
 from utils.telegram_notifier import send_telegram_notification
+
+load_dotenv()
 
 
 @pytest.fixture(scope="session")
@@ -131,21 +134,26 @@ def attach_artifacts_on_failure(request, page: Page, context: BrowserContext):
         context.tracing.stop()
 
 
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_sessionfinish(session, exitstatus):
     token = os.getenv('TELEGRAM_BOT_TOKEN')
     chat_id = os.getenv('TELEGRAM_CHAT_ID')
 
-    if token and chat_id:
-        passed = session.testscollected - session.testfailed
-        failed = session.testsfailed
-
-        status_icon = "✅" if failed == 0 else "❌"
-        message = (
-            f"<b>{status_icon} Результаты прогона автотестов DemoQA</b>\n\n"
-            f"<b>Всего тестов:</b> {session.testscollected}\n"
-            f"<b>Успешно:</b> {passed}\n"
-            f"<b>Упало:</b> {failed}\n"
+    if not token or not chat_id:
+        print(
+            '\n[INFO] Telegram notification skipped: TELEGRAM_BOT_TOKEN or'
+            ' TELEGRAM_CHAT_ID not provided.'
         )
+        return
 
-        send_telegram_notification(token=token, chat_id=chat_id, message=message)
+    passed = session.testscollected - session.testsfailed
+    failed = session.testsfailed
+
+    status_icon = '✅' if failed == 0 else '❌'
+    message = (
+        f'<b>{status_icon} Результаты прогона автотестов DemoQA</b>\n\n'
+        f'<b>Всего тестов:</b> {session.testscollected}\n'
+        f'<b>Успешно:</b> {passed}\n'
+        f'<b>Упало:</b> {failed}\n'
+    )
+
+    send_telegram_notification(token=token, chat_id=chat_id, message=message)

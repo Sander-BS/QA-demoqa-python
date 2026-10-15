@@ -218,3 +218,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+
+
+.idea/
+.vscode/
+
+
+allure-results/
+*.zip
+
+
+
+*.pyc
